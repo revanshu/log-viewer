@@ -3,6 +3,7 @@
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { NormalizedLogEntry } from "@/lib/otlp";
+import { severityColor, severityLevelForEntry } from "@/lib/severity";
 
 type HeaderItem = { kind: "header"; serviceName: string; count: number };
 type LogItem = { kind: "log"; entry: NormalizedLogEntry };
@@ -15,7 +16,8 @@ const timeFmt = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
-  fractionalSecondDigits: 3
+  fractionalSecondDigits: 3,
+  timeZoneName: "short"
 });
 
 function fmtTime(tsMs: number) {
@@ -50,9 +52,17 @@ export function LogListVirtual({
   groupByService: boolean;
 }) {
   const parentRef = useRef<HTMLDivElement | null>(null);
-  const [expanded, setExpanded] = useState(() => new Set<string>());
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const items = useMemo(() => buildItems(entries, groupByService), [entries, groupByService]);
+  const idToIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    for (let idx = 0; idx < items.length; idx++) {
+      const it = items[idx];
+      if (it?.kind === "log") map.set(it.entry.id, idx);
+    }
+    return map;
+  }, [items]);
 
   const virtualizer = useVirtualizer({
     count: items.length,
@@ -62,18 +72,33 @@ export function LogListVirtual({
     measureElement: (el) => el.getBoundingClientRect().height
   });
 
-  const toggle = useCallback(
-    (id: string) => {
-      setExpanded((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        return next;
-      });
-      // Expansion changes row height; force a re-measure after DOM update.
-      requestAnimationFrame(() => virtualizer.measure());
+  const measureIndex = useCallback(
+    (idx: number | undefined) => {
+      if (idx === undefined) return;
+      const parent = parentRef.current;
+      if (!parent) return;
+      const el = parent.querySelector<HTMLElement>(`[data-index="${idx}"]`);
+      if (!el) return;
+      virtualizer.measureElement(el);
     },
     [virtualizer]
+  );
+
+  const toggle = useCallback(
+    (id: string) => {
+      const prevId = expandedId;
+      const nextId = prevId === id ? null : id;
+      setExpandedId(nextId);
+
+      // Re-measure only the affected row(s) after DOM updates.
+      const nextIdx = nextId ? idToIndex.get(nextId) : undefined;
+      const prevIdx = prevId ? idToIndex.get(prevId) : undefined;
+      requestAnimationFrame(() => {
+        measureIndex(prevIdx);
+        measureIndex(nextIdx);
+      });
+    },
+    [expandedId, idToIndex, measureIndex]
   );
 
   const total = virtualizer.getTotalSize();
@@ -87,7 +112,11 @@ export function LogListVirtual({
         <div>Body</div>
       </div>
 
-      <div ref={parentRef} className="min-h-0 flex-1 overflow-auto">
+      <div
+        ref={parentRef}
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-scroll"
+        style={{ scrollbarGutter: "stable" }}
+      >
         <div className="relative w-full" style={{ height: total }}>
           {virtualItems.map((vi) => {
             const item = items[vi.index];
@@ -95,7 +124,7 @@ export function LogListVirtual({
 
             return (
               <div
-                key={vi.key}
+                key={item.kind === "header" ? `h-${item.serviceName}` : item.entry.id}
                 data-index={vi.index}
                 ref={virtualizer.measureElement}
                 className="absolute left-0 top-0 w-full"
@@ -107,7 +136,7 @@ export function LogListVirtual({
                     <span className="ml-2 text-xs font-normal text-slate-500">({item.count})</span>
                   </div>
                 ) : (
-                  <LogRow entry={item.entry} isExpanded={expanded.has(item.entry.id)} onToggle={toggle} />
+                  <LogRow entry={item.entry} isExpanded={expandedId === item.entry.id} onToggle={toggle} />
                 )}
               </div>
             );
@@ -127,17 +156,25 @@ const LogRow = memo(function LogRow({
   isExpanded: boolean;
   onToggle: (id: string) => void;
 }) {
-  const sev = entry.severityText ?? (entry.severityNumber !== null ? String(entry.severityNumber) : "—");
+  const level = severityLevelForEntry(entry);
+  const sevLabel =
+    entry.severityText ??
+    (entry.severityNumber !== null ? `${level} (${entry.severityNumber})` : level);
   const time = fmtTime(entry.tsMs);
+  const c = severityColor(level);
 
   return (
-    <div className="px-3 py-2">
+    <div className="box-border flex w-full flex-col gap-2 border-b border-slate-200 px-3 py-2">
       <button
         type="button"
-        className="grid w-full grid-cols-[140px_240px_1fr] items-start gap-3 text-left"
+        className="grid w-full grid-cols-[140px_240px_1fr] items-start gap-3 text-left box-border"
         onClick={() => onToggle(entry.id)}
       >
-        <div className="text-xs font-mono text-slate-700">{sev}</div>
+        <div className="flex items-center">
+          <span className={`inline-flex rounded px-2 py-0.5 text-[11px] font-mono ${c.bg} ${c.text}`}>
+            {sevLabel}
+          </span>
+        </div>
         <div className="text-xs font-mono text-slate-700">{time}</div>
         <div className="min-w-0 text-xs font-mono text-slate-900">
           <div className="truncate">{entry.body || "—"}</div>
@@ -145,9 +182,9 @@ const LogRow = memo(function LogRow({
       </button>
 
       {isExpanded ? (
-        <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2">
+        <div className="box-border w-full min-w-0 max-w-full rounded border border-slate-200 bg-slate-50 p-2">
           <div className="text-[11px] font-semibold text-slate-600">Attributes</div>
-          <pre className="mt-1 overflow-auto text-xs font-mono text-slate-900">
+          <pre className="mt-1 w-full min-w-0 max-w-full max-h-72 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words text-xs font-mono text-slate-900">
             {JSON.stringify(
               {
                 serviceName: entry.serviceName,
