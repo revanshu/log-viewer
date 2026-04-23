@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 function setOrDelete(sp: URLSearchParams, key: string, value: string | null) {
@@ -19,12 +19,18 @@ export function FilterBar() {
 
   const [q, setQ] = useState(qFromUrl);
 
-  const canSync = useMemo(() => q !== qFromUrl, [q, qFromUrl]);
+  useEffect(() => {
+    setQ(qFromUrl);
+  }, [qFromUrl]);
 
-  function push(next: URLSearchParams) {
+  const canSync = useMemo(() => q.trim() !== qFromUrl.trim(), [q, qFromUrl]);
+
+  function navigate(next: URLSearchParams) {
     const qs = next.toString();
+    const nextUrl = qs ? `${pathname}?${qs}` : pathname;
+
     startTransition(() => {
-      router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      router.replace(nextUrl, { scroll: false });
     });
   }
 
@@ -38,7 +44,7 @@ export function FilterBar() {
         onClick={() => {
           const next = new URLSearchParams(sp);
           setOrDelete(next, "groupByService", groupByService ? null : "1");
-          push(next);
+          navigate(next);
         }}
         aria-pressed={groupByService}
       >
@@ -55,7 +61,7 @@ export function FilterBar() {
             if (e.key !== "Enter") return;
             const next = new URLSearchParams(sp);
             setOrDelete(next, "q", q.trim() ? q.trim() : null);
-            push(next);
+            navigate(next);
           }}
         />
         <button
@@ -65,7 +71,7 @@ export function FilterBar() {
           onClick={() => {
             const next = new URLSearchParams(sp);
             setOrDelete(next, "q", q.trim() ? q.trim() : null);
-            push(next);
+            navigate(next);
           }}
         >
           Apply
@@ -79,7 +85,7 @@ export function FilterBar() {
             next.delete("q");
             next.delete("startMs");
             next.delete("endMs");
-            push(next);
+            navigate(next);
           }}
         >
           Clear
