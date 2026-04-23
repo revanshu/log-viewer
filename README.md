@@ -36,33 +36,21 @@ npm run start
 
 ## Vercel deployment
 
-This project includes a `vercel.json` file and is configured for Vercel's Next.js deployment.
-
-### Deploy using Vercel Dashboard
-
-1. Go to `https://vercel.com`
-2. Sign in or create an account
-3. Import the repository
-4. Select this project and let Vercel detect `Next.js`
-5. Deploy
-
-### Deploy using Vercel CLI
-
-1. Install Vercel CLI (if not installed):
-
-```bash
-npm install -g vercel
-```
-
-2. Run the deployment command from the project directory:
-
-```bash
-vercel
-```
-
-3. Follow the prompts to link or create a project.
+https://log-viewer-self.vercel.app/
 
 ## Notes
 
-- Environment variables can be added in the Vercel dashboard if needed.
-- The app uses Next.js 14 and Tailwind CSS.
+- This app is done using Cursor free trial.
+- The app uses Next.js 14, typescript, react and Tailwind CSS.
+- react-virtual for better scrolling experience
+- recharts for histogram
+- Query params as state, so that user can share the links with filters
+- oltp data transformation
+- Fetch call in the parent component, with caching for few second, this way data does not change on every reload rather we fetch the logs in some interval
+
+## Future improvements
+
+- Creating separate directory for components. or using a light weight component library
+- Handling large number of data and calculation using pagination, webworker and server streaming events
+- State management when there are multiple pages relying on same data
+- react-query, if there are many pages relying on same data, and there are other features like caching, handles the loading and error state etc
