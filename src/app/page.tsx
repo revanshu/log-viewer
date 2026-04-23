@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { normalizeOtlpLogsResponse } from "@/lib/otlp";
 import { LogViewerClient } from "@/components/LogViewerClient";
 
@@ -15,7 +16,9 @@ export default async function HomePage() {
 
   return (
     <main className="h-dvh">
-      <LogViewerClient entries={entries} />
+      <Suspense fallback={<div className="flex h-full items-center justify-center">Loading...</div>}>
+        <LogViewerClient entries={entries} />
+      </Suspense>
     </main>
   );
 }
