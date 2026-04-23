@@ -1,11 +1,9 @@
 import { normalizeOtlpLogsResponse } from "@/lib/otlp";
 import { LogViewerClient } from "@/components/LogViewerClient";
 
-export const dynamic = "force-dynamic";
-
 async function fetchLogs() {
   const res = await fetch("https://take-home-assignment-otlp-logs-api.vercel.app/api/logs", {
-    cache: "no-store"
+    next: { revalidate: 30 }
   });
   if (!res.ok) throw new Error(`Failed to fetch logs (${res.status})`);
   return res.json();

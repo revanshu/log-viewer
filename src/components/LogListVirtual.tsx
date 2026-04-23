@@ -1,11 +1,11 @@
 "use client";
 
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { NormalizedLogEntry } from "@/lib/otlp";
 import { severityColor, severityLevelForEntry } from "@/lib/severity";
 
-type HeaderItem = { kind: "header"; serviceName: string; count: number };
+type HeaderItem = { kind: "header"; serviceName: string; count: number; isCollapsed: boolean };
 type LogItem = { kind: "log"; entry: NormalizedLogEntry };
 type RowItem = HeaderItem | LogItem;
 
@@ -24,7 +24,11 @@ function fmtTime(tsMs: number) {
   return timeFmt.format(new Date(tsMs));
 }
 
-function buildItems(entries: NormalizedLogEntry[], groupByService: boolean): RowItem[] {
+function buildItems(
+  entries: NormalizedLogEntry[],
+  groupByService: boolean,
+  openService: string | null
+): RowItem[] {
   if (!groupByService) return entries.map((entry) => ({ kind: "log", entry }));
 
   const map = new Map<string, NormalizedLogEntry[]>();
@@ -38,8 +42,11 @@ function buildItems(entries: NormalizedLogEntry[], groupByService: boolean): Row
   const services = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   const out: RowItem[] = [];
   for (const [serviceName, serviceEntries] of services) {
-    out.push({ kind: "header", serviceName, count: serviceEntries.length });
-    for (const entry of serviceEntries) out.push({ kind: "log", entry });
+    const isCollapsed = openService === null ? true : openService !== serviceName;
+    out.push({ kind: "header", serviceName, count: serviceEntries.length, isCollapsed });
+    if (!isCollapsed) {
+      for (const entry of serviceEntries) out.push({ kind: "log", entry });
+    }
   }
   return out;
 }
@@ -53,8 +60,22 @@ export function LogListVirtual({
 }) {
   const parentRef = useRef<HTMLDivElement | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [openService, setOpenService] = useState<string | null>(null);
 
-  const items = useMemo(() => buildItems(entries, groupByService), [entries, groupByService]);
+  // Default: when grouped, collapse all service groups.
+  useEffect(() => {
+    if (!groupByService) {
+      setOpenService(null);
+      return;
+    }
+    setOpenService(null);
+    setExpandedId(null);
+  }, [entries, groupByService]);
+
+  const items = useMemo(
+    () => buildItems(entries, groupByService, openService),
+    [entries, groupByService, openService]
+  );
   const idToIndex = useMemo(() => {
     const map = new Map<string, number>();
     for (let idx = 0; idx < items.length; idx++) {
@@ -67,10 +88,21 @@ export function LogListVirtual({
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => parentRef.current,
+    getItemKey: (index) => {
+      const it = items[index];
+      if (!it) return index;
+      return it.kind === "header" ? `h-${it.serviceName}` : it.entry.id;
+    },
     estimateSize: (index) => (items[index]?.kind === "header" ? 34 : 54),
     overscan: 10,
     measureElement: (el) => el.getBoundingClientRect().height
   });
+
+  useLayoutEffect(() => {
+    // When groups collapse/expand, the rendered item set changes.
+    // Re-measure after commit so cached sizes don't drift.
+    virtualizer.measure();
+  }, [openService, items.length, virtualizer]);
 
   const measureIndex = useCallback(
     (idx: number | undefined) => {
@@ -99,6 +131,15 @@ export function LogListVirtual({
       });
     },
     [expandedId, idToIndex, measureIndex]
+  );
+
+  const toggleService = useCallback(
+    (serviceName: string) => {
+      setOpenService((prev) => (prev === serviceName ? null : serviceName));
+      setExpandedId(null);
+      requestAnimationFrame(() => virtualizer.measure());
+    },
+    [virtualizer]
   );
 
   const total = virtualizer.getTotalSize();
@@ -131,10 +172,15 @@ export function LogListVirtual({
                 style={{ transform: `translateY(${vi.start}px)` }}
               >
                 {item.kind === "header" ? (
-                  <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">
+                  <button
+                    type="button"
+                    onClick={() => toggleService(item.serviceName)}
+                    className="flex w-full items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm font-semibold text-slate-900"
+                  >
+                    <span className="w-4 text-slate-500">{item.isCollapsed ? "▸" : "▾"}</span>
                     <span className="font-mono">{item.serviceName}</span>
-                    <span className="ml-2 text-xs font-normal text-slate-500">({item.count})</span>
-                  </div>
+                    <span className="text-xs font-normal text-slate-500">({item.count})</span>
+                  </button>
                 ) : (
                   <LogRow entry={item.entry} isExpanded={expandedId === item.entry.id} onToggle={toggle} />
                 )}
