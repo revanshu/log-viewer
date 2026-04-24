@@ -1,38 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
-function setOrDelete(sp: URLSearchParams, key: string, value: string | null) {
-  if (value === null || value === "") sp.delete(key);
-  else sp.set(key, value);
-}
+import { useMemo } from "react";
+import { useLogFilterStore } from "@/lib/logFilterStore";
 
 export function FilterBar() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const sp = useSearchParams();
-  const [isPending, startTransition] = useTransition();
+  const groupByService = useLogFilterStore((state) => state.groupByService);
+  const q = useLogFilterStore((state) => state.q ?? "");
+  const setQ = useLogFilterStore((state) => state.setQ);
+  const setGroupByService = useLogFilterStore((state) => state.setGroupByService);
+  const clear = useLogFilterStore((state) => state.clear);
 
-  const groupByService = sp.get("groupByService") === "1" || sp.get("groupByService") === "true";
-  const qFromUrl = sp.get("q") ?? "";
-
-  const [q, setQ] = useState(qFromUrl);
-
-  useEffect(() => {
-    setQ(qFromUrl);
-  }, [qFromUrl]);
-
-  const canSync = useMemo(() => q.trim() !== qFromUrl.trim(), [q, qFromUrl]);
-
-  function navigate(next: URLSearchParams) {
-    const qs = next.toString();
-    const nextUrl = qs ? `${pathname}?${qs}` : pathname;
-
-    startTransition(() => {
-      router.replace(nextUrl, { scroll: false });
-    });
-  }
+  const trimmedQ = useMemo(() => q.trim(), [q]);
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 p-3">
@@ -41,11 +19,7 @@ export function FilterBar() {
         className={`rounded border px-3 py-1 text-sm ${
           groupByService ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-900"
         }`}
-        onClick={() => {
-          const next = new URLSearchParams(sp);
-          setOrDelete(next, "groupByService", groupByService ? null : "1");
-          navigate(next);
-        }}
+        onClick={() => setGroupByService(!groupByService)}
         aria-pressed={groupByService}
       >
         Group by Service
@@ -59,20 +33,13 @@ export function FilterBar() {
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
             if (e.key !== "Enter") return;
-            const next = new URLSearchParams(sp);
-            setOrDelete(next, "q", q.trim() ? q.trim() : null);
-            navigate(next);
+            setQ(trimmedQ);
           }}
         />
         <button
           type="button"
-          className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-900 disabled:opacity-50"
-          disabled={!canSync || isPending}
-          onClick={() => {
-            const next = new URLSearchParams(sp);
-            setOrDelete(next, "q", q.trim() ? q.trim() : null);
-            navigate(next);
-          }}
+          className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-900"
+          onClick={() => setQ(trimmedQ)}
         >
           Apply
         </button>
@@ -81,18 +48,14 @@ export function FilterBar() {
           className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-900"
           onClick={() => {
             setQ("");
-            const next = new URLSearchParams(sp);
-            next.delete("q");
-            next.delete("startMs");
-            next.delete("endMs");
-            navigate(next);
+            clear();
           }}
         >
           Clear
         </button>
       </div>
 
-      <div className="ml-auto text-xs text-slate-500">{isPending ? "Updating…" : null}</div>
+      <div className="ml-auto text-xs text-slate-500">{null}</div>
     </div>
   );
 }

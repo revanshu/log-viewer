@@ -44,13 +44,13 @@ https://log-viewer-self.vercel.app/
 - The app uses Next.js 14, typescript, react and Tailwind CSS.
 - react-virtual for better scrolling experience
 - recharts for histogram
-- Query params as state, so that user can share the links with filters
+- Zustand state object
 - oltp data transformation
 - Fetch call in the parent component, with caching for few second, this way data does not change on every reload rather we fetch the logs in some interval
 
 ## Future improvements
 
 - Creating separate directory for components. or using a light weight component library
+- Testing - unit and e2e
 - Handling large number of data and calculation using pagination, webworker and server streaming events
-- State management when there are multiple pages relying on same data
 - react-query, if there are many pages relying on same data, and there are other features like caching, handles the loading and error state etc

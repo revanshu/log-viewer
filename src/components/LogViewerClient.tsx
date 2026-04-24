@@ -1,17 +1,24 @@
 "use client";
 
 import { Suspense, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
 import type { NormalizedLogEntry } from "@/lib/otlp";
-import { applyLogFilters, parseLogFilterParams } from "@/lib/filters";
+import { applyLogFilters } from "@/lib/filters";
+import { useLogFilterStore } from "@/lib/logFilterStore";
 import { FilterBar } from "@/components/FilterBar";
 import { Histogram } from "@/components/Histogram";
 import { LogListVirtual } from "@/components/LogListVirtual";
 
 export function LogViewerClient({ entries }: { entries: NormalizedLogEntry[] }) {
-  const sp = useSearchParams();
+  const q = useLogFilterStore((state) => state.q);
+  const groupByService = useLogFilterStore((state) => state.groupByService);
+  const startMs = useLogFilterStore((state) => state.startMs);
+  const endMs = useLogFilterStore((state) => state.endMs);
 
-  const params = useMemo(() => parseLogFilterParams(new URLSearchParams(sp)), [sp]);
+  const params = useMemo(
+    () => ({ q, groupByService, startMs, endMs }),
+    [q, groupByService, startMs, endMs]
+  );
+
   const filtered = useMemo(() => applyLogFilters(entries, params), [entries, params]);
 
   return (
