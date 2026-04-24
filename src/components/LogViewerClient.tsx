@@ -22,7 +22,7 @@ export function LogViewerClient({ entries }: { entries: NormalizedLogEntry[] }) 
   const filtered = useMemo(() => applyLogFilters(entries, params), [entries, params]);
 
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex min-h-screen flex-col">
       <Suspense fallback={<div className="p-3 text-sm text-slate-500">Loading filters…</div>}>
         <FilterBar />
       </Suspense>

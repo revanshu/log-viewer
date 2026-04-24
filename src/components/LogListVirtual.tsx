@@ -93,16 +93,17 @@ export function LogListVirtual({
       if (!it) return index;
       return it.kind === "header" ? `h-${it.serviceName}` : it.entry.id;
     },
-    estimateSize: (index) => (items[index]?.kind === "header" ? 34 : 54),
+    estimateSize: (index) => (items[index]?.kind === "header" ? 34 : 40),
     overscan: 10,
     measureElement: (el) => el.getBoundingClientRect().height
   });
 
   useLayoutEffect(() => {
-    // When groups collapse/expand, the rendered item set changes.
-    // Re-measure after commit so cached sizes don't drift.
-    virtualizer.measure();
-  }, [openService, items.length, virtualizer]);
+    // When the rendered item set changes, re-measure heights after the DOM is painted.
+    requestAnimationFrame(() => {
+      virtualizer.measure();
+    });
+  }, [items, openService, virtualizer]);
 
   const measureIndex = useCallback(
     (idx: number | undefined) => {

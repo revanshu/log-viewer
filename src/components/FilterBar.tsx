@@ -39,13 +39,6 @@ export function FilterBar() {
         <button
           type="button"
           className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-900"
-          onClick={() => setQ(trimmedQ)}
-        >
-          Apply
-        </button>
-        <button
-          type="button"
-          className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-900"
           onClick={() => {
             setQ("");
             clear();

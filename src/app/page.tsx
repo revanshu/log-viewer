@@ -15,7 +15,7 @@ export default async function HomePage() {
   const entries = normalizeOtlpLogsResponse(raw);
 
   return (
-    <main className="h-dvh">
+    <main className="min-h-screen">
       <LogViewerClient entries={entries} />
     </main>
   );
