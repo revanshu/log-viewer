@@ -62,12 +62,8 @@ export function LogListVirtual({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [openService, setOpenService] = useState<string | null>(null);
 
-  // Default: when grouped, collapse all service groups.
+  // Collapse expanded rows and service groups whenever the entry list or grouping changes.
   useEffect(() => {
-    if (!groupByService) {
-      setOpenService(null);
-      return;
-    }
     setOpenService(null);
     setExpandedId(null);
   }, [entries, groupByService]);

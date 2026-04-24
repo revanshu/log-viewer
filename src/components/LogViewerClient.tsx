@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import {useMemo } from "react";
 import type { NormalizedLogEntry } from "@/lib/otlp";
 import { applyLogFilters } from "@/lib/filters";
 import { useLogFilterStore } from "@/lib/logFilterStore";
@@ -23,9 +23,7 @@ export function LogViewerClient({ entries }: { entries: NormalizedLogEntry[] }) 
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Suspense fallback={<div className="p-3 text-sm text-slate-500">Loading filters…</div>}>
-        <FilterBar />
-      </Suspense>
+      <FilterBar />
       <div className="border-b border-slate-200 p-3">
         <div className="mb-2 flex items-baseline justify-between gap-4">
           <div className="text-sm font-semibold text-slate-900">Histogram</div>

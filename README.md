@@ -40,7 +40,7 @@ https://log-viewer-self.vercel.app/
 
 ## Notes
 
-- This app is done using Cursor free trial.
+- This app is done using Cursor free trial and copilot free trial.
 - The app uses Next.js 14, typescript, react and Tailwind CSS.
 - react-virtual for better scrolling experience
 - recharts for histogram
