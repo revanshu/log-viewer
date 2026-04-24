@@ -16,9 +16,7 @@ export default async function HomePage() {
 
   return (
     <main className="h-dvh">
-      <Suspense fallback={<div className="flex h-full items-center justify-center">Loading...</div>}>
-        <LogViewerClient entries={entries} />
-      </Suspense>
+      <LogViewerClient entries={entries} />
     </main>
   );
 }
